@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="Generating 3D-Consistent Videos from Unposed Internet Photos">
+  <meta name="keywords" content="KFC-W, Keyframe-conditioned video generation, Internet Photos, Scaling 3D Learning, Self-supervised learning">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KFC-W</title>
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYVRSFMDRL"></script> -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+
+    gtag('js', new Date());
+
+    gtag('config', 'G-PYVRSFMDRL');
+  </script>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="icon" href="data:image/svg+xml,
+    <svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22>
+      <text y=%22.9em%22 font-size=%2290%22>🏛️</text>
+    </svg>"
+  >
+
+  <style>
+    .slideshow-container {
+      position: relative;
+      margin: 0 auto;
+      width: 1000px;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 40px;
+    }
+    .comp-video-container {
+      width: 100%;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: white;
+      height: 400px;
+    }
+    .comp-video-container video {
+      width: 768px; 
+      height: 768px;
+      object-fit: contain;
+      display: block;
+      border: 4px solid transparent;
+      transition: border-color 0.3s ease;
+      box-sizing: border-box;
+    }
+    
+    .video-container {
+      width: 100%;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: white;
+      height: 400px;
+    }
+    .video-container video {
+      width: 384px; 
+      height: 384px;
+      object-fit: contain;
+      display: block;
+      border: 4px solid transparent;
+      transition: border-color 0.3s ease;
+      box-sizing: border-box;
+    }
+    .video-container video.highlight-start {
+      border-color: greenyellow;
+    }
+    .video-container video.highlight-end {
+      border-color: red;
+    }
+    .nav-button {
+      position: absolute;
+      top: 300px;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.2);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      z-index: 10;
+      transition: all 0.3s ease;
+    }
+    .nav-button:hover {
+      background: rgba(0, 0, 0, 0.4);
+    }
+    .prev-button {
+      left: 110px;
+    }
+    .next-button {
+      right: 110px;
+    }
+    .counter {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      z-index: 10;
+    }
+    .source-images {
+      margin: 20px auto;
+      padding: 0;
+      width: 100%;
+      background: white;
+      min-height: 250px;
+    }
+    .image-grid {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      padding: 0 20px;
+      margin: 0 auto;
+      min-height: 180px;
+    }
+    .image-container {
+      position: relative;
+      width: 180px;   /* Reduced from 240px */
+      height: 180px;  /* Reduced from 240px */
+      flex: 0 0 180px;
+    }
+    .image-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 4px;
+      display: block;
+    }
+    .image-label {
+      position: absolute;
+      bottom: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.9em;
+      white-space: nowrap;
+    }
+    .source-images-title {
+        text-align: center;
+        color: #4a4a4a;
+        margin-top: 35px;
+        font-size: 1.5em;  /* Increased from 1.2em */
+        font-weight: 600;  /* Added font weight */
+        margin-bottom: 10px;
+        font-family: 'Google Sans', sans-serif;  /* Match your website's font if needed */
+    }
+    .slideshow-section-title {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #363636;
+      font-size: 1.5em;
+      font-weight: bold;
+    }
+    .video-note {
+        text-align: center;
+        color: #666;
+        margin: 20px auto;
+        padding: 15px 25px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        max-width: 800px;
+        line-height: 1.6;
+        font-size: 0.9em;
+    }
+
+    .video-note span.green {
+        color: #32CD32;
+        font-weight: bold;
+    }
+
+    .video-note span.red {
+        color: #FF0000;
+        font-weight: bold;
+    }
+
+    /* .gs-image-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      margin-bottom: 1rem;
+    }
+
+    .gs-image-wrapper {
+      width: 30%; 
+      display: flex;
+      justify-content: center;
+    }
+
+    .gs-image-grid img {
+      width: 100%;  
+      height: auto;
+      object-fit: cover;
+    }
+
+    .gs-image-caption {
+      margin: 0;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    } */
+
+</style>
+
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/index.js"></script>
+</head>
+<body>
+
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">Generating 3D-Consistent Videos from Unposed Internet Photos</h1>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              Anonymous CVPR Submission -- Supplemental Material (Qualitative Results) <br>Paper ID 5733 
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="hero-body"><h2 class="title is-3" style="text-align: center;">Generated Videos of Ours (Full)</h2>
+      <!-- Phototourism Data Slideshow -->
+      <!-- <h2 class="slideshow-section-title">Internet Photo Collections from the Phototourism Dataset</h2> -->
+      <div class="slideshow-container" id="pt-slideshow">
+        <div class="counter">Scene 1/N</div>
+        <button class="nav-button prev-button">←</button>
+        <button class="nav-button next-button">→</button>
+        <div class="video-container">
+          <video playsinline muted>
+            <source src="" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+        <div class="video-note">
+            The generated video simulates a camera movement linking all input images, progressing from input 1 to n.<br>
+            The <span class="green">green border</span> denotes the first video frame, which should correspond to the first input image.<br>
+            The <span class="red">red border</span> denotes the last video frame, which should correspond to the last input image.<br>
+        </div>
+        <div class="source-images">
+          <div class="image-grid"></div>
+          <h3 class="source-images-title">Unposed internet photos from the Phototourism Dataset</h3>
+        </div>
+      </div>
+
+      <!-- RE10K Data Slideshow -->
+      <!-- <h2 class="slideshow-section-title">RE10K Dataset</h2> -->
+      <div class="slideshow-container" id="re10k-slideshow">
+        <div class="counter">Scene 1/N</div>
+        <button class="nav-button prev-button">←</button>
+        <button class="nav-button next-button">→</button>
+        <div class="video-container">
+          <video playsinline muted>
+            <source src="" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+        <div class="video-note">
+            The generated video simulates a camera movement linking all input images, progressing from input 1 to n.<br>
+            The <span class="green">green border</span> denotes the first video frame, which should correspond to the first input image.<br>
+            The <span class="red">red border</span> denotes the last video frame, which should correspond to the last input image.<br>
+        </div>
+        <div class="source-images">
+          <div class="image-grid"></div>
+          <h3 class="source-images-title">Unposed photos from the Re10k Dataset</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+
+<section class="section" style="margin-bottom: 10px; padding-bottom: 0px;">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="hero body">
+        <div class="columns is-centered has-text-centered">
+          <h2 class="title is-3">Qualitative Comparisons (Paper Section 4.1)</h2>
+        </div>
+        <div class="comparison-slideshow-container" id="comparison-slideshow">
+          <div class="counter">Scene 1/N</div>
+          <button class="nav-button prev-button">←</button>
+          <button class="nav-button next-button">→</button>
+          
+          <h3 class="source-images-title">Input Images</h3>
+          <div class="source-images">
+            <div class="image-grid"></div>
+          </div>
+
+          <div class="comp-video-container">
+            <video playsinline muted controls>
+              <source src="" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        
+          <div class="video-note">
+            The generated videos simulate camera movements linking all input images, from input 1 to n.<br>
+            The <span class="green">green border</span> denotes the first video frame, which should correspond to the first input image.<br>
+            The <span class="red">red border</span> denotes the last video frame, which should correspond to the last input image.<br>
+          </div>
+        </div>
+      
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* Update container layout */
+.comparison-slideshow-container {
+  position: relative;
+      margin: 0 auto;
+      width: 1000px;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 40px;
+    }
+
+/* Adjust source images section */
+.comparison-slideshow-container .source-images {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: white;
+}
+
+/* Update video container */
+.comparison-slideshow-container .comp-video-container {
+  width: 100%;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: white;
+  height: 550px; /* Changed from fixed height */
+  margin-bottom: 120px;
+  margin-top: -20px;
+}
+
+/* Adjust video sizing */
+.comparison-slideshow-container .comp-video-container video {
+  width: 768px;
+  height: 768px;
+  object-fit: contain;
+  display: block;
+  border: 4px solid transparent;
+  transition: border-color 0.3s ease;
+  box-sizing: border-box;
+}
+
+/* Update video note positioning */
+.comparison-slideshow-container .video-note {
+        text-align: center;
+        color: #666;
+        margin: 20px auto;
+        padding: 15px 25px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        max-width: 800px;
+        line-height: 1.6;
+        font-size: 0.9em;
+    }
+
+/* Adjust navigation buttons */
+.comparison-slideshow-container .nav-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+
+.comparison-slideshow-container .prev-button {
+  left: 20px;
+}
+
+.comparison-slideshow-container .next-button {
+  right: 20px;
+}
+
+/* Image grid adjustments */
+.comparison-slideshow-container .image-grid {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  /* padding: 0 20px; */
+  flex-wrap: wrap;
+}
+
+.comparison-slideshow-container .image-container {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  flex: 0 0 180px;
+}
+
+/* Counter positioning */
+.comparison-slideshow-container .counter {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+}
+/* Title spacing */
+.comparison-slideshow-container .source-images-title {
+  margin: 50px 0; /* Reduced from default margins */
+}
+  </style>
+
+<section class="section" style="margin-bottom: 10px; padding-bottom: 0px;">
+  <div class="container is-max-desktop">
+    <!-- Abstract. -->
+    <div class="columns is-centered">
+      <div class="column is-four-fifths">
+        <div class="columns is-centered has-text-centered">
+        <h2 class="title is-3">Applications</h2>
+      </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-4">3D Gaussian Splatting via InstantSplat (Paper Section 4.3)</h2>
+        
+        <div class="applications-container">
+          <!-- First Example -->
+          <div class="example-block">
+            <div class="images-section">
+              <p class="gs-image-caption" style="font-size: 1.5rem">Input Images</p>
+              <div class="gs-image-grid">
+                <div class="gs-image-wrapper">
+                  <img src="./static/videos/brand/0.jpg" alt="Left comparison image 1" />
+                </div>
+                <div class="gs-image-wrapper">
+                  <img src="./static/videos/brand/1.jpg" alt="Left comparison image 2" />
+                </div>
+                <div class="gs-image-wrapper">
+                  <img src="./static/videos/brand/2.jpg" alt="Left comparison image 3" />
+                </div>
+              </div>
+            </div>
+            
+            <div class="video-with-caption">
+              <p class="caption">Left: on internet photos; Right: on generated frames</p>
+              <video autoplay controls muted loop playsinline>
+                <source src="./static/videos/brand.mp4" type="video/mp4">
+              </video>
+            </div>
+          </div>
+
+          <!-- Second Example -->
+          <div class="example-block">
+            <div class="images-section">
+              <p class="gs-image-caption" style="font-size: 1.5rem">Input Images</p>
+              <div class="gs-image-grid">
+                <div class="gs-image-wrapper">
+                  <img src="./static/videos/british/0.jpg" alt="Right comparison image 1" />
+                </div>
+                <div class="gs-image-wrapper">
+                  <img src="./static/videos/british/1.jpg" alt="Right comparison image 2" />
+                </div>
+                <div class="gs-image-wrapper">
+                  <img src="./static/videos/british/2.jpg" alt="Right comparison image 3" />
+                </div>
+              </div>
+            </div>
+            
+            <div class="video-with-caption">
+              <p class="caption">Left: on internet photos; Right: on generated frames</p>
+              <video autoplay controls muted loop playsinline>
+                <source src="./static/videos/british.mp4" type="video/mp4">
+              </video>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .applications-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4rem;
+      align-items: center;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 0;
+    }
+
+    .example-block {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .images-section {
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+
+    .gs-image-caption {
+      text-align: center;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      color: #666;
+    }
+
+    .gs-image-grid {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      width: 100%;
+    }
+
+    .gs-image-wrapper {
+      width: calc(33.33% - 0.67rem);
+      max-width: 240px;
+      aspect-ratio: 1;
+    }
+
+    .gs-image-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+
+    .video-with-caption {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .video-with-caption video {
+      width: 100%;
+      max-width: 800px;
+      height: auto;
+    }
+
+    .caption {
+      text-align: center;
+      color: #666;
+      font-size: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .gs-image-wrapper {
+        max-width: 160px;
+      }
+      
+      .example-block {
+        max-width: 95%;
+      }
+    }
+  </style>
+</section>
+
+
+<!-- loads qualitativeComparisons variable -->
+<script src="./static/results/qualitative_comparisons.js"></script>
+
+<script>
+
+// Add ComparisonSlideshow class
+class ComparisonSlideshow {
+  constructor(containerId, comparisons) {
+    this.currentIndex = 0;
+    this.container = document.getElementById(containerId);
+    this.comparisons = comparisons;
+    
+    // Get single video element
+    this.video = this.container.querySelector('.comp-video-container video');
+    
+    // Initialize video controller
+    this.videoController = new VideoController(this.video);
+
+    this.counter = this.container.querySelector('.counter');
+    this.imageGrid = this.container.querySelector('.image-grid');
+
+    this.container.querySelector('.prev-button').addEventListener('click', () => this.previous());
+    this.container.querySelector('.next-button').addEventListener('click', () => this.next());
+
+    this.updateSlide();
+  }
+
+  updateSlide() {
+    const currentComparison = this.comparisons[this.currentIndex];
+    
+    // Update counter
+    this.counter.textContent = `Scene ${this.currentIndex + 1}/${this.comparisons.length}`;
+    
+    // Update video - use only the 'ours' video
+    this.video.src = currentComparison.video;
+    this.video.load();
+    
+    // Update images grid
+    this.imageGrid.innerHTML = currentComparison.images.map((image, idx) => `
+      <div class="image-container">
+        <img src="${image}" alt="Input ${idx + 1}">
+        <div class="image-label">Input ${idx + 1}</div>
+      </div>
+    `).join('');
+  }
+
+  previous() {
+    this.currentIndex = (this.currentIndex === 0) ? this.comparisons.length - 1 : this.currentIndex - 1;
+    this.updateSlide();
+  }
+
+  next() {
+    this.currentIndex = (this.currentIndex === this.comparisons.length - 1) ? 0 : this.currentIndex + 1;
+    this.updateSlide();
+  }
+}
+
+
+
+  // teasers 
+  // Filter to only keep "ours" videos
+  const comparisons = [
+  {
+    "id": "scene1",
+    "title": "Scene 1",
+    "images": [
+      "static/results/pt/all_sparse_views/sacre_coeur/views_2_2/images/18025503_3440119974.jpg",
+      "static/results/pt/all_sparse_views/sacre_coeur/views_2_2/images/70860676_2671019430.jpg"
+    ],
+    "videos": [
+      "static/results/pt/luma_generations/sacre_coeur/views_2_2/stitched.mp4",
+      "static/results/pt/ours_generations/2/44_0.mp4"
+    ]
+  },
+  {
+    "id": "scene2",
+    "title": "Scene 2",
+    "images": [
+      "static/results/re10k/all_sparse_views/0043978734eec081/views_5_0/0043978734eec081_00000000.png",
+      "static/results/re10k/all_sparse_views/0043978734eec081/views_5_0/0043978734eec081_00000017.png",
+      "static/results/re10k/all_sparse_views/0043978734eec081/views_5_0/0043978734eec081_00000035.png",
+      "static/results/re10k/all_sparse_views/0043978734eec081/views_5_0/0043978734eec081_00000052.png",
+      "static/results/re10k/all_sparse_views/0043978734eec081/views_5_0/0043978734eec081_00000070.png"
+    ],
+    "videos": [
+      "static/results/re10k/luma_generations/0043978734eec081/views_5_0/stitched.mp4",
+      "static/results/re10k/ours_generations/5/18_0.mp4"
+    ]
+  },
+  {
+    "id": "scene3",
+    "title": "Scene 3",
+    "images": [
+      "static/results/pt/all_sparse_views/temple_nara_japan/views_2_1/images/87319938_8739757321.jpg",
+      "static/results/pt/all_sparse_views/temple_nara_japan/views_2_1/images/89263705_7055034603.jpg"
+    ],
+    "videos": [
+      "static/results/pt/luma_generations/temple_nara_japan/views_2_1/stitched.mp4",
+      "static/results/pt/ours_generations/2/58_1.mp4"
+    ]
+  },
+  {
+    "id": "scene4",
+    "title": "Scene 4",
+    "images": [
+      "static/results/re10k/all_sparse_views/01aaf4ebb084dc16/views_5_0/01aaf4ebb084dc16_00000085.png",
+      "static/results/re10k/all_sparse_views/01aaf4ebb084dc16/views_5_0/01aaf4ebb084dc16_00000125.png",
+      "static/results/re10k/all_sparse_views/01aaf4ebb084dc16/views_5_0/01aaf4ebb084dc16_00000165.png",
+      "static/results/re10k/all_sparse_views/01aaf4ebb084dc16/views_5_0/01aaf4ebb084dc16_00000205.png",
+      "static/results/re10k/all_sparse_views/01aaf4ebb084dc16/views_5_0/01aaf4ebb084dc16_00000245.png"
+    ],
+    "videos": [
+      "static/results/re10k/ours_generations/5/135_0.mp4",
+      "static/results/re10k/luma_generations/01aaf4ebb084dc16/views_5_0/stitched.mp4"
+    ]
+  },
+  {
+    "id": "scene5",
+    "title": "Scene 5",
+    "images": [
+      "static/results/pt/all_sparse_views/reichstag/views_2_0/images/64271070_4602086309.jpg",
+      "static/results/pt/all_sparse_views/reichstag/views_2_0/images/77122925_1063274053.jpg"
+    ],
+    "videos": [
+      "static/results/pt/ours_generations/2/39_1.mp4",
+      "static/results/pt/luma_generations/reichstag/views_2_0/stitched.mp4"
+    ]
+  },
+  {
+    "id": "scene6",
+    "title": "Scene 6",
+    "images": [
+      "static/results/re10k/all_sparse_views/000db54a47bd43fe/views_4_0/000db54a47bd43fe_00000019.png",
+      "static/results/re10k/all_sparse_views/000db54a47bd43fe/views_4_0/000db54a47bd43fe_00000057.png",
+      "static/results/re10k/all_sparse_views/000db54a47bd43fe/views_4_0/000db54a47bd43fe_00000095.png",
+      "static/results/re10k/all_sparse_views/000db54a47bd43fe/views_4_0/000db54a47bd43fe_00000133.png"
+    ],
+    "videos": [
+      "static/results/re10k/ours_generations/4/3_0.mp4",
+      "static/results/re10k/luma_generations/000db54a47bd43fe/views_4_0/stitched.mp4"
+    ]
+  },
+  {
+    "id": "scene7",
+    "title": "Scene 7",
+    "images": [
+      "static/results/pt/all_sparse_views/notre_dame_front_facade/views_2_2/images/27335203_487553664.jpg",
+      "static/results/pt/all_sparse_views/notre_dame_front_facade/views_2_2/images/80749661_7180275066.jpg"
+    ],
+    "videos": [
+      "static/results/pt/luma_generations/notre_dame_front_facade/views_2_2/stitched.mp4",
+      "static/results/pt/ours_generations/2/29_1.mp4"
+    ]
+  },
+  {
+    "id": "scene8",
+    "title": "Scene 8",
+    "images": [
+      "static/results/pt/all_sparse_views/brandenburg_gate/views_3_2/images/24838916_1516097177.jpg",
+      "static/results/pt/all_sparse_views/brandenburg_gate/views_3_2/images/55255156_8911548609.jpg",
+      "static/results/pt/all_sparse_views/brandenburg_gate/views_3_2/images/89436585_2728666510.jpg"
+    ],
+    "videos": [
+      "static/results/pt/ours_generations/3/2_1.mp4",
+      "static/results/pt/luma_generations/brandenburg_gate/views_3_2/stitched.mp4"
+    ]
+  },
+  {
+    "id": "scene9",
+    "title": "Scene 9",
+    "images": [
+      "static/results/re10k/all_sparse_views/01842c6b21e1d679/views_4_0/01842c6b21e1d679_00000041.png",
+      "static/results/re10k/all_sparse_views/01842c6b21e1d679/views_4_0/01842c6b21e1d679_00000084.png",
+      "static/results/re10k/all_sparse_views/01842c6b21e1d679/views_4_0/01842c6b21e1d679_00000127.png",
+      "static/results/re10k/all_sparse_views/01842c6b21e1d679/views_4_0/01842c6b21e1d679_00000170.png"
+    ],
+    "videos": [
+      "static/results/re10k/ours_generations/4/108_0.mp4",
+      "static/results/re10k/vid-only_generations/4/108_0.mp4"
+    ]
+  },
+  {
+    "id": "scene10",
+    "title": "Scene 10",
+    "images": [
+      "static/results/pt/all_sparse_views/lincoln_memorial_statue/views_3_0/images/03518714_5846844084.jpg",
+      "static/results/pt/all_sparse_views/lincoln_memorial_statue/views_3_0/images/17235116_3670762328.jpg",
+      "static/results/pt/all_sparse_views/lincoln_memorial_statue/views_3_0/images/67904520_2282662352.jpg"
+    ],
+    "videos": [
+      "static/results/pt/ours_generations/3/18_1.mp4",
+      "static/results/pt/luma_generations/lincoln_memorial_statue/views_3_0/stitched.mp4"
+    ]
+  },
+  {
+    "id": "scene11",
+    "title": "Scene 11",
+    "images": [
+      "static/results/pt/all_sparse_views/st_pauls_cathedral/views_2_0/images/50777283_4936535855.jpg",
+      "static/results/pt/all_sparse_views/st_pauls_cathedral/views_2_0/images/78582770_410620191.jpg"
+    ],
+    "videos": [
+      "static/results/pt/luma_generations/st_pauls_cathedral/views_2_0/stitched.mp4",
+      "static/results/pt/ours_generations/2/48_0.mp4"
+    ]
+  },
+  {
+    "id": "scene12",
+    "title": "Scene 12",
+    "images": [
+      "static/results/re10k/all_sparse_views/015d8a2a2834d38c/views_5_0/015d8a2a2834d38c_00000044.png",
+      "static/results/re10k/all_sparse_views/015d8a2a2834d38c/views_5_0/015d8a2a2834d38c_00000088.png",
+      "static/results/re10k/all_sparse_views/015d8a2a2834d38c/views_5_0/015d8a2a2834d38c_00000132.png",
+      "static/results/re10k/all_sparse_views/015d8a2a2834d38c/views_5_0/015d8a2a2834d38c_00000176.png",
+      "static/results/re10k/all_sparse_views/015d8a2a2834d38c/views_5_0/015d8a2a2834d38c_00000220.png"
+    ],
+    "videos": [
+      "static/results/re10k/luma_generations/015d8a2a2834d38c/views_5_0/stitched.mp4",
+      "static/results/re10k/ours_generations/5/99_0.mp4"
+    ]
+  },
+  {
+    "id": "scene13",
+    "title": "Scene 13",
+    "images": [
+      "static/results/re10k/all_sparse_views/000c3ab189999a83/views_5_0/000c3ab189999a83_00000129.png",
+      "static/results/re10k/all_sparse_views/000c3ab189999a83/views_5_0/000c3ab189999a83_00000166.png",
+      "static/results/re10k/all_sparse_views/000c3ab189999a83/views_5_0/000c3ab189999a83_00000203.png",
+      "static/results/re10k/all_sparse_views/000c3ab189999a83/views_5_0/000c3ab189999a83_00000240.png",
+      "static/results/re10k/all_sparse_views/000c3ab189999a83/views_5_0/000c3ab189999a83_00000277.png"
+    ],
+    "videos": [
+      "static/results/re10k/luma_generations/000c3ab189999a83/views_5_0/stitched.mp4",
+      "static/results/re10k/ours_generations/5/0_0.mp4"
+    ]
+  },
+  {
+    "id": "scene14",
+    "title": "Scene 14",
+    "images": [
+      "static/results/re10k/all_sparse_views/01a2277ee817b310/views_3_0/01a2277ee817b310_00000030.png",
+      "static/results/re10k/all_sparse_views/01a2277ee817b310/views_3_0/01a2277ee817b310_00000065.png",
+      "static/results/re10k/all_sparse_views/01a2277ee817b310/views_3_0/01a2277ee817b310_00000100.png"
+    ],
+    "videos": [
+      "static/results/re10k/vid-only_generations/3/126_0.mp4",
+      "static/results/re10k/ours_generations/3/126_0.mp4"
+    ]
+  },
+  {
+    "id": "scene15",
+    "title": "Scene 15",
+    "images": [
+      "static/results/pt/all_sparse_views/brandenburg_gate/views_3_0/images/38050442_8184868664.jpg",
+      "static/results/pt/all_sparse_views/brandenburg_gate/views_3_0/images/87789955_4151176666.jpg",
+      "static/results/pt/all_sparse_views/brandenburg_gate/views_3_0/images/89274779_2983340497.jpg"
+    ],
+    "videos": [
+      "static/results/pt/ours_generations/3/0_0.mp4",
+      "static/results/pt/vid-only_generations/3/0_0.mp4"
+    ]
+  },
+  {
+    "id": "scene16",
+    "title": "Scene 16",
+    "images": [
+      "static/results/pt/all_sparse_views/st_pauls_cathedral/views_3_1/images/23168302_9287800128.jpg",
+      "static/results/pt/all_sparse_views/st_pauls_cathedral/views_3_1/images/36924691_6406659277.jpg",
+      "static/results/pt/all_sparse_views/st_pauls_cathedral/views_3_1/images/64684364_2174886426.jpg"
+    ],
+    "videos": [
+      "static/results/pt/luma_generations/st_pauls_cathedral/views_3_1/stitched.mp4",
+      "static/results/pt/ours_generations/3/49_1.mp4"
+    ]
+  },
+  {
+    "id": "scene17",
+    "title": "Scene 17",
+    "images": [
+      "static/results/pt/all_sparse_views/notre_dame_front_facade/views_4_0/images/22923618_3392895108.jpg",
+      "static/results/pt/all_sparse_views/notre_dame_front_facade/views_4_0/images/76492687_2293746202.jpg",
+      "static/results/pt/all_sparse_views/notre_dame_front_facade/views_4_0/images/76692819_8608643093.jpg",
+      "static/results/pt/all_sparse_views/notre_dame_front_facade/views_4_0/images/99388900_7610461422.jpg"
+    ],
+    "videos": [
+      "static/results/pt/ours_generations/4/27_0.mp4",
+      "static/results/pt/luma_generations/notre_dame_front_facade/views_4_0/stitched.mp4"
+    ]
+  },
+  {
+    "id": "scene18",
+    "title": "Scene 18",
+    "images": [
+      "static/results/pt/all_sparse_views/pantheon_exterior/views_2_0/images/07184561_9337173062.jpg",
+      "static/results/pt/all_sparse_views/pantheon_exterior/views_2_0/images/45535681_498276500.jpg"
+    ],
+    "videos": [
+      "static/results/pt/ours_generations/2/33_0.mp4",
+      "static/results/pt/luma_generations/pantheon_exterior/views_2_0/stitched.mp4"
+    ]
+  },
+  {
+    "id": "scene19",
+    "title": "Scene 19",
+    "images": [
+      "static/results/re10k/all_sparse_views/01b08e2f20321127/views_5_0/01b08e2f20321127_00000000.png",
+      "static/results/re10k/all_sparse_views/01b08e2f20321127/views_5_0/01b08e2f20321127_00000018.png",
+      "static/results/re10k/all_sparse_views/01b08e2f20321127/views_5_0/01b08e2f20321127_00000037.png",
+      "static/results/re10k/all_sparse_views/01b08e2f20321127/views_5_0/01b08e2f20321127_00000055.png",
+      "static/results/re10k/all_sparse_views/01b08e2f20321127/views_5_0/01b08e2f20321127_00000074.png"
+    ],
+    "videos": [
+      "static/results/re10k/ours_generations/5/138_0.mp4",
+      "static/results/re10k/luma_generations/01b08e2f20321127/views_5_0/stitched.mp4"
+    ]
+  },
+  {
+    "id": "scene20",
+    "title": "Scene 20",
+    "images": [
+      "static/results/pt/all_sparse_views/sacre_coeur/views_2_1/images/02580991_8300101521.jpg",
+      "static/results/pt/all_sparse_views/sacre_coeur/views_2_1/images/03654060_2228949569.jpg"
+    ],
+    "videos": [
+      "static/results/pt/luma_generations/sacre_coeur/views_2_1/stitched.mp4",
+      "static/results/pt/ours_generations/2/43_0.mp4"
+    ]
+  },
+  {
+    "id": "scene21",
+    "title": "Scene 21",
+    "images": [
+      "static/results/pt/all_sparse_views/trevi_fountain/views_3_0/images/29740134_3799463911.jpg",
+      "static/results/pt/all_sparse_views/trevi_fountain/views_3_0/images/37233881_3650701281.jpg",
+      "static/results/pt/all_sparse_views/trevi_fountain/views_3_0/images/75017867_5746101695.jpg"
+    ],
+    "videos": [
+      "static/results/pt/luma_generations/trevi_fountain/views_3_0/stitched.mp4",
+      "static/results/pt/ours_generations/3/60_1.mp4"
+    ]
+  },
+  {
+    "id": "scene22",
+    "title": "Scene 22",
+    "images": [
+      "static/results/pt/all_sparse_views/piazza_san_marco/views_2_1/images/04412498_5871274067.jpg",
+      "static/results/pt/all_sparse_views/piazza_san_marco/views_2_1/images/87179181_4063549880.jpg"
+    ],
+    "videos": [
+      "static/results/pt/luma_generations/piazza_san_marco/views_2_1/stitched.mp4",
+      "static/results/pt/ours_generations/2/37_0.mp4"
+    ]
+  },
+  {
+    "id": "scene23",
+    "title": "Scene 23",
+    "images": [
+      "static/results/re10k/all_sparse_views/00beb03ef95dc637/views_3_0/00beb03ef95dc637_00000028.png",
+      "static/results/re10k/all_sparse_views/00beb03ef95dc637/views_3_0/00beb03ef95dc637_00000065.png",
+      "static/results/re10k/all_sparse_views/00beb03ef95dc637/views_3_0/00beb03ef95dc637_00000102.png"
+    ],
+    "videos": [
+      "static/results/re10k/ours_generations/3/57_0.mp4",
+      "static/results/re10k/luma_generations/00beb03ef95dc637/views_3_0/stitched.mp4"
+    ]
+  },
+  {
+    "id": "scene24",
+    "title": "Scene 24",
+    "images": [
+      "static/results/re10k/all_sparse_views/0181d3b41c2cf87c/views_2_0/0181d3b41c2cf87c_00000029.png",
+      "static/results/re10k/all_sparse_views/0181d3b41c2cf87c/views_2_0/0181d3b41c2cf87c_00000059.png"
+    ],
+    "videos": [
+      "static/results/re10k/ours_generations/2/105_0.mp4",
+      "static/results/re10k/luma_generations/0181d3b41c2cf87c/views_2_0/stitched.mp4"
+    ]
+  },
+  {
+    "id": "scene25",
+    "title": "Scene 25",
+    "images": [
+      "static/results/pt/all_sparse_views/reichstag/views_5_0/images/35221995_8835396469.jpg",
+      "static/results/pt/all_sparse_views/reichstag/views_5_0/images/49051226_8836027266.jpg",
+      "static/results/pt/all_sparse_views/reichstag/views_5_0/images/49284352_2431392889.jpg",
+      "static/results/pt/all_sparse_views/reichstag/views_5_0/images/91549947_3428166276.jpg",
+      "static/results/pt/all_sparse_views/reichstag/views_5_0/images/91549947_3428166276.jpg"
+    ],
+    "videos": [
+      "static/results/pt/ours_generations/5/39_0.mp4",
+      "static/results/pt/luma_generations/reichstag/views_5_0/stitched.mp4"
+    ]
+  }
+];
+
+  // Split comparisons into PT and RE10K
+  const ptComparisons = comparisons
+    .filter(comp => comp.videos[0].includes('/pt/'))
+    .map(comp => ({
+        ...comp,
+        video: comp.videos.find(v => v.includes('ours_generations'))
+    }));
+
+const re10kComparisons = comparisons
+    .filter(comp => comp.videos[0].includes('/re10k/'))
+    .map(comp => ({
+        ...comp,
+        video: comp.videos.find(v => v.includes('ours_generations'))
+    }));
+
+    class VideoController {
+    constructor(videoElement) {
+        this.video = videoElement;
+        this.endPauseTriggered = false;
+        this.isWaitingToRestart = false;
+        this.initialize();
+        this.setupVisibilityObserver();
+    }
+
+    initialize() {
+        this.video.removeAttribute('loop');
+        this.video.addEventListener('ended', () => this.handleVideoEnded());
+        this.video.addEventListener('timeupdate', () => this.checkForEndPause());
+        this.video.addEventListener('loadedmetadata', () => this.setupInitialPause());
+    }
+
+    setupVisibilityObserver() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    if (!this.isWaitingToRestart && !this.endPauseTriggered) {
+                        this.video.play();
+                    }
+                } else {
+                    this.video.pause();
+                }
+            });
+        }, { threshold: 0.5 });
+
+        observer.observe(this.video);
+    }
+
+    checkForEndPause() {
+        // Increased the threshold to catch the end frame more reliably
+        // and added a check for the actual duration
+        const timeRemaining = this.video.duration - this.video.currentTime;
+        const endThreshold = Math.min(0.2, this.video.duration * 0.01); // Dynamic threshold based on video length
+        
+        if (timeRemaining <= endThreshold && !this.endPauseTriggered) {
+            // Ensure we're at the very end
+            this.video.currentTime = this.video.duration;
+            this.triggerEndPause();
+        }
+    }
+
+    triggerEndPause() {
+        if (this.endPauseTriggered) return;
+        this.endPauseTriggered = true;
+
+        this.video.pause();
+        this.video.classList.add('highlight-end', 'paused');
+
+        // Increased pause duration at the end
+        setTimeout(() => {
+            this.video.classList.remove('highlight-end', 'paused');
+            this.restartVideo();
+        }, 750); // Increased from 500ms to 750ms
+    }
+
+    handleVideoEnded() {
+        this.endPauseTriggered = false;
+    }
+
+    restartVideo() {
+        if (this.isWaitingToRestart) return;
+        this.isWaitingToRestart = true;
+
+        this.video.currentTime = 0;
+        this.video.pause();
+        this.video.classList.add('highlight-start', 'paused');
+
+        setTimeout(() => {
+            this.video.classList.remove('highlight-start', 'paused');
+            this.video.play();
+            this.isWaitingToRestart = false;
+            this.endPauseTriggered = false;
+        }, 750); // Increased from 500ms to 750ms for consistency
+    }
+
+    setupInitialPause() {
+        this.video.pause();
+        this.video.currentTime = 0;
+        this.video.classList.add('highlight-start', 'paused');
+
+        setTimeout(() => {
+            this.video.classList.remove('highlight-start', 'paused');
+            this.video.play();
+        }, 750); // Increased from 500ms to 750ms for consistency
+    }
+}
+
+  class Slideshow {
+        constructor(containerId, videos) {
+            this.currentIndex = 0;
+            this.container = document.getElementById(containerId);
+            this.videos = videos;
+            this.video = this.container.querySelector('.video-container video');
+            this.videoController = new VideoController(this.video);
+            this.counter = this.container.querySelector('.counter');
+            this.imageGrid = this.container.querySelector('.image-grid');
+
+            this.container.querySelector('.prev-button').addEventListener('click', () => this.previous());
+            this.container.querySelector('.next-button').addEventListener('click', () => this.next());
+
+            this.updateSlide();
+        }
+
+        updateSlide() {
+        const currentVideo = this.videos[this.currentIndex];
+        
+        // Update counter
+        this.counter.textContent = `Scene ${this.currentIndex + 1}/${this.videos.length}`;
+        
+        // Update video
+        this.video.src = currentVideo.video;
+        this.video.load();
+        
+        // Update images grid
+        this.imageGrid.innerHTML = currentVideo.images.map((image, idx) => `
+            <div class="image-container">
+                <img src="${image}" alt="Input ${idx + 1}">
+                <div class="image-label">Input ${idx + 1}</div>
+            </div>
+        `).join('');
+    }
+
+        previous() {
+            this.currentIndex = (this.currentIndex === 0) ? this.videos.length - 1 : this.currentIndex - 1;
+            this.updateSlide();
+        }
+
+        next() {
+            this.currentIndex = (this.currentIndex === this.videos.length - 1) ? 0 : this.currentIndex + 1;
+            this.updateSlide();
+        }
+    }
+
+    // Initialize both slideshows when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+    new Slideshow('pt-slideshow', ptComparisons);
+    new Slideshow('re10k-slideshow', re10kComparisons);
+    new ComparisonSlideshow('comparison-slideshow', qualitativeComparisons);
+});
+</script>
+
+
+
+</body>
+</html>
